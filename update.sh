@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
 set -e
+set -o errexit
+set -o errtrace
+
+# 定义错误处理函数
+error_handler() {
+    echo "Error occurred in script at line: ${BASH_LINENO[0]}, command: '${BASH_COMMAND}'"
+}
+
+# 设置trap捕获ERR信号
+trap 'error_handler' ERR
 
 source /etc/profile
 BASE_PATH=$(cd $(dirname $0) && pwd)
@@ -180,8 +190,13 @@ fix_mk_def_depends() {
 }
 
 add_wifi_default_set() {
-    if [ -d $BUILD_DIR/package/base-files/files/etc/uci-defaults ]; then
-        install -m 755 -D "$BASE_PATH/patches/992_set-wifi-uci.sh" "$BUILD_DIR/package/base-files/files/etc/uci-defaults/992_set-wifi-uci.sh"
+    local uci_dir="$BUILD_DIR/package/base-files/files/etc/uci-defaults"
+    local ipq_uci_dir="$BUILD_DIR/target/linux/qualcommax/ipq60xx/base-files/etc/uci-defaults"
+    if [ -f "$uci_dir/990_set-wireless.sh" ]; then
+        \rm -f "$uci_dir/990_set-wireless.sh"
+    fi
+    if [ -d "$ipq_uci_dir" ]; then
+        install -m 755 -D "$BASE_PATH/patches/992_set-wifi-uci.sh" "$ipq_uci_dir/992_set-wifi-uci.sh"
     fi
 }
 
@@ -209,8 +224,8 @@ remove_something_nss_kmod() {
 
 remove_affinity_script() {
     local affinity_script_path="$BUILD_DIR/target/linux/qualcommax/ipq60xx/base-files/etc/init.d/set-irq-affinity"
-    if [ -d "$(dirname "$affinity_script_path")" ]; then
-        [ -f "$affinity_script_path" ] && \rm -f "$affinity_script_path"
+    if [ -f "$affinity_script_path" ]; then
+        \rm -f "$affinity_script_path"
     fi
 }
 
@@ -236,26 +251,20 @@ update_ath11k_fw() {
 }
 
 fix_mkpkg_format_invalid() {
-    if [ -f $BUILD_DIR/feeds/small8/luci-lib-taskd/Makefile ]; then
-        sed -i 's/>=1\.0\.3-1/>=1\.0\.3-r1/g' $BUILD_DIR/feeds/small8/luci-lib-taskd/Makefile
-    fi
-    if [ -f $BUILD_DIR/feeds/small8/v2ray-geodata/Makefile ]; then
-        sed -i 's/VER)-\$(PKG_RELEASE)/VER)-r\$(PKG_RELEASE)/g' $BUILD_DIR/feeds/small8/v2ray-geodata/Makefile
-    fi
-    if [ -f $BUILD_DIR/feeds/small8/luci-app-openclash/Makefile ]; then
-        sed -i 's/PKG_RELEASE:=beta/PKG_RELEASE:=1/g' $BUILD_DIR/feeds/small8/luci-app-openclash/Makefile
-    fi
-    if [ -f $BUILD_DIR/feeds/small8/luci-app-store/Makefile ]; then
-        sed -i 's/PKG_VERSION:=0\.1\.26-3/PKG_VERSION:=0\.1\.26/g' $BUILD_DIR/feeds/small8/luci-app-store/Makefile
-        sed -i 's/PKG_RELEASE:=$/PKG_RELEASE:=3/g' $BUILD_DIR/feeds/small8/luci-app-store/Makefile
-    fi
-    if [ -f $BUILD_DIR/feeds/small8/luci-app-passwall/Makefile ]; then
-        sed -i 's/PKG_VERSION:=4\.78-4/PKG_VERSION:=4\.78/g' $BUILD_DIR/feeds/small8/luci-app-passwall/Makefile
-        sed -i 's/PKG_RELEASE:=$/PKG_RELEASE:=4/g' $BUILD_DIR/feeds/small8/luci-app-passwall/Makefile
-    fi
-    if [ -f $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile ]; then
-        sed -i 's/PKG_VERSION:=0\.8\.16-1/PKG_VERSION:=0\.8\.16/g' $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile
-        sed -i 's/PKG_RELEASE:=$/PKG_RELEASE:=1/g' $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile
+    if [[ $BUILD_DIR =~ "imm-nss" ]]; then
+        if [ -f $BUILD_DIR/feeds/small8/v2ray-geodata/Makefile ]; then
+            sed -i 's/VER)-\$(PKG_RELEASE)/VER)-r\$(PKG_RELEASE)/g' $BUILD_DIR/feeds/small8/v2ray-geodata/Makefile
+        fi
+        if [ -f $BUILD_DIR/feeds/small8/luci-lib-taskd/Makefile ]; then
+            sed -i 's/>=1\.0\.3-1/>=1\.0\.3-r1/g' $BUILD_DIR/feeds/small8/luci-lib-taskd/Makefile
+        fi
+        if [ -f $BUILD_DIR/feeds/small8/luci-app-openclash/Makefile ]; then
+            sed -i 's/PKG_RELEASE:=beta/PKG_RELEASE:=1/g' $BUILD_DIR/feeds/small8/luci-app-openclash/Makefile
+        fi
+        if [ -f $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile ]; then
+            sed -i 's/PKG_VERSION:=0\.8\.16-1/PKG_VERSION:=0\.8\.16/g' $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile
+            sed -i 's/PKG_RELEASE:=$/PKG_RELEASE:=1/g' $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile
+        fi
     fi
 }
 
@@ -289,9 +298,20 @@ EOF
 
 chanage_cpuusage() {
     local luci_dir="$BUILD_DIR/feeds/luci/modules/luci-base/root/usr/share/rpcd/ucode/luci"
+    local imm_script1="$BUILD_DIR/package/base-files/files/etc/uci-defaults/992_luci-NSS-Load.sh"
+    local imm_script2="$BUILD_DIR/target/linux/qualcommax/ipq60xx/base-files/sbin/cpuusage"
+
     if [ -f $luci_dir ]; then
         sed -i "s#const fd = popen('top -n1 | awk \\\'/^CPU/ {printf(\"%d%\", 100 - \$8)}\\\'')#const cpuUsageCommand = access('/sbin/cpuusage') ? '/sbin/cpuusage' : \"top -n1 | awk \\'/^CPU/ {printf(\"%d%\", 100 - \$8)}\\'\"#g" $luci_dir
         sed -i '/cpuUsageCommand/a \\t\t\tconst fd = popen(cpuUsageCommand);' $luci_dir
+    fi
+
+    if [ -f "$imm_script1" ]; then
+        \rm -f "$imm_script1"
+    fi
+
+    if [ -f "$imm_script2" ]; then
+        \rm -f "$imm_script2"
     fi
 }
 
@@ -324,7 +344,10 @@ boot() {
 
     if [ -n "$wg_ifname" ]; then
         # 添加新的 wireguard_check 任务，每3分钟执行一次
-        echo "*/3 * * * * /sbin/wireguard_check.sh >/dev/null 2>&1" >>/etc/crontabs/root
+        echo "*/3 * * * * /sbin/wireguard_check.sh" >>/etc/crontabs/root
+        uci set system.@system[0].cronloglevel='9'
+        uci commit system
+        /etc/init.d/cron restart
     fi
 
     # 应用新的 crontab 配置
@@ -359,7 +382,7 @@ main() {
     remove_affinity_script
     fix_build_for_openssl
     update_ath11k_fw
-    # fix_mkpkg_format_invalid
+    fix_mkpkg_format_invalid
     chanage_cpuusage
     update_tcping
     add_wg_chk
