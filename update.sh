@@ -245,7 +245,7 @@ update_ath11k_fw() {
 
     if [ -d "$(dirname "$makefile")" ] && [ -f "$makefile" ]; then
         [ -f "$new_mk" ] && \rm -f "$new_mk"
-        curl -o "$new_mk" https://raw.githubusercontent.com/VIKINGYFY/immortalwrt/refs/heads/main/package/firmware/ath11k-firmware/Makefile
+        curl -L -o "$new_mk" https://raw.githubusercontent.com/VIKINGYFY/immortalwrt/refs/heads/main/package/firmware/ath11k-firmware/Makefile
         \mv -f "$new_mk" "$makefile"
     fi
 }
@@ -264,6 +264,10 @@ fix_mkpkg_format_invalid() {
         if [ -f $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile ]; then
             sed -i 's/PKG_VERSION:=0\.8\.16-1/PKG_VERSION:=0\.8\.16/g' $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile
             sed -i 's/PKG_RELEASE:=$/PKG_RELEASE:=1/g' $BUILD_DIR/feeds/small8/luci-app-quickstart/Makefile
+        fi
+        if [ -f $BUILD_DIR/feeds/small8/luci-app-store/Makefile ]; then
+            sed -i 's/PKG_VERSION:=0\.1\.27-1/PKG_VERSION:=0\.1\.27/g' $BUILD_DIR/feeds/small8/luci-app-store/Makefile
+            sed -i 's/PKG_RELEASE:=$/PKG_RELEASE:=1/g' $BUILD_DIR/feeds/small8/luci-app-store/Makefile
         fi
     fi
 }
@@ -320,7 +324,7 @@ update_tcping() {
 
     if [ -d "$(dirname "$tcping_path")" ] && [ -f "$tcping_path" ]; then
         \rm -f "$tcping_path"
-        curl -o "$tcping_path" https://raw.githubusercontent.com/xiaorouji/openwrt-passwall-packages/refs/heads/main/tcping/Makefile
+        curl -L -o "$tcping_path" https://raw.githubusercontent.com/xiaorouji/openwrt-passwall-packages/refs/heads/main/tcping/Makefile
     fi
 }
 
@@ -364,6 +368,22 @@ add_wg_chk() {
     fi
 }
 
+update_pw_ha_chk() {
+    local pw_ha_path="$BUILD_DIR/feeds/small8/luci-app-passwall/root/usr/share/passwall/haproxy_check.sh"
+    local new_path="$BASE_PATH/patches/haproxy_check.sh"
+    local ha_lua_path="$BUILD_DIR/feeds/small8/luci-app-passwall/root/usr/share/passwall/haproxy.lua"
+
+    if [ -f "$pw_ha_path" ]; then
+        rm -f "$pw_ha_path"
+    fi
+
+    install -m 755 -D "$new_path" "$pw_ha_path"
+
+    if [ -f $ha_lua_path ]; then
+        sed -i 's/rise 1 fall 3/rise 3 fall 2/g' "$ha_lua_path"
+    fi
+}
+
 main() {
     clone_repo
     clean_up
@@ -388,6 +408,7 @@ main() {
     add_wg_chk
     add_ax6600_led
     set_custom_task
+    update_pw_ha_chk
     install_feeds
 }
 
