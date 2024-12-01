@@ -121,10 +121,10 @@ update_golang() {
 
 install_small8() {
     ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
-        naiveproxy shadowsocks-rust sing-box v2ray-core v2ray-geodata v2ray-plugin tuic-client \
-        chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev luci-app-passwall \
-        alist luci-app-alist smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns adguardhome \
-        luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm luci-lib-taskd \
+        naiveproxy shadowsocks-rust sing-box v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
+        tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
+        luci-app-passwall alist luci-app-alist smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
+        adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm luci-lib-taskd \
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
         luci-app-mihomo luci-app-homeproxy
@@ -348,7 +348,7 @@ boot() {
 
     if [ -n "$wg_ifname" ]; then
         # 添加新的 wireguard_check 任务，每3分钟执行一次
-        echo "*/3 * * * * /sbin/wireguard_check.sh" >>/etc/crontabs/root
+        echo "*/10 * * * * /sbin/wireguard_check.sh" >>/etc/crontabs/root
         uci set system.@system[0].cronloglevel='9'
         uci commit system
         /etc/init.d/cron restart
