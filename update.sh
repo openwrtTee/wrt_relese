@@ -148,8 +148,10 @@ fix_default_set() {
     #修改默认主题
     sed -i "s/luci-theme-bootstrap/luci-theme-$THEME_SET/g" $(find ./feeds/luci/collections/ -type f -name "Makefile")
 
-    if [[ -f ./package/emortal/autocore/files/tempinfo ]]; then
-        if [[ -f $BASE_PATH/patches/tempinfo ]]; then
+    install -m 755 -D "$BASE_PATH/patches/99_set_argon_primary" "$BUILD_DIR/package/base-files/files/etc/uci-defaults/99_set_argon_primary"
+
+    if [ -f $BUILD_DIR/package/emortal/autocore/files/tempinfo ]; then
+        if [ -f $BASE_PATH/patches/tempinfo ]; then
             \cp -f $BASE_PATH/patches/tempinfo ./package/emortal/autocore/files/tempinfo
         fi
     fi
@@ -209,16 +211,32 @@ update_default_lan_addr() {
 
 remove_something_nss_kmod() {
     local ipq_target_path="$BUILD_DIR/target/linux/qualcommax/ipq60xx/target.mk"
+    local ipq_mk_path="$BUILD_DIR/target/linux/qualcommax/Makefile"
     if [ -f $ipq_target_path ]; then
         sed -i 's/kmod-qca-nss-drv-eogremgr//g' $ipq_target_path
         sed -i 's/kmod-qca-nss-drv-gre//g' $ipq_target_path
-        sed -i 's/kmod-qca-nss-drv-pvxlanmgr//g' $ipq_target_path
-        sed -i 's/kmod-qca-nss-drv-vxlanmgr//g' $ipq_target_path
+        sed -i 's/kmod-qca-nss-drv-map-t//g' $ipq_target_path
+        sed -i 's/kmod-qca-nss-drv-match//g' $ipq_target_path
         sed -i 's/kmod-qca-nss-drv-mirror//g' $ipq_target_path
+        sed -i 's/kmod-qca-nss-drv-pvxlanmgr//g' $ipq_target_path
         sed -i 's/kmod-qca-nss-drv-tun6rd//g' $ipq_target_path
         sed -i 's/kmod-qca-nss-drv-tunipip6//g' $ipq_target_path
+        sed -i 's/kmod-qca-nss-drv-vxlanmgr//g' $ipq_target_path
         sed -i 's/kmod-qca-nss-macsec//g' $ipq_target_path
-        sed -i 's/kmod-qca-nss-drv-match//g' $ipq_target_path
+    fi
+
+    if [ -f $ipq_mk_path ]; then
+        sed -i '/kmod-qca-nss-crypto/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-eogremgr/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-gre/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-map-t/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-match/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-mirror/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-tun6rd/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-tunipip6/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-vxlanmgr/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-drv-wifi-meshmgr/d' $ipq_mk_path
+        sed -i '/kmod-qca-nss-macsec/d' $ipq_mk_path
     fi
 }
 
@@ -276,6 +294,7 @@ add_ax6600_led() {
     local target_dir="$BUILD_DIR/target/linux/qualcommax/ipq60xx/base-files"
     local initd_dir="$target_dir/etc/init.d"
     local sbin_dir="$target_dir/sbin"
+    local athena_led_dir="$BUILD_DIR/package/emortal/luci-app-athena-led"
 
     if [ -d "$(dirname "$target_dir")" ] && [ -d "$initd_dir" ]; then
         cat <<'EOF' >"$initd_dir/start_screen"
@@ -285,7 +304,8 @@ START=99
 
 boot() {
     case $(board_name) in
-    jdcloud,ax6600)
+    jdcloud,ax6600|\
+    jdcloud,re-cs-02)
         ax6600_led >/dev/null 2>&1 &
         ;;
     esac
@@ -298,15 +318,17 @@ EOF
         # 临时加一下
         install -m 755 -D "$BASE_PATH/patches/cpuusage" "$sbin_dir/cpuusage"
     fi
+
+    \rm -rf $athena_led_dir 2>/dev/null
 }
 
 chanage_cpuusage() {
     local luci_dir="$BUILD_DIR/feeds/luci/modules/luci-base/root/usr/share/rpcd/ucode/luci"
-    local imm_script1="$BUILD_DIR/package/base-files/files/etc/uci-defaults/992_luci-NSS-Load.sh"
-    local imm_script2="$BUILD_DIR/target/linux/qualcommax/ipq60xx/base-files/sbin/cpuusage"
+    local imm_script1="$BUILD_DIR/package/base-files/files/etc/uci-defaults/993_set-nss-load.sh"
+    local imm_script2="$BUILD_DIR/package/base-files/files/sbin/cpuusage"
 
     if [ -f $luci_dir ]; then
-        sed -i "s#const fd = popen('top -n1 | awk \\\'/^CPU/ {printf(\"%d%\", 100 - \$8)}\\\'')#const cpuUsageCommand = access('/sbin/cpuusage') ? '/sbin/cpuusage' : \"top -n1 | awk \\'/^CPU/ {printf(\"%d%\", 100 - \$8)}\\'\"#g" $luci_dir
+        sed -i "s#const fd = popen('top -n1 | awk \\\'/^CPU/ {printf(\"%d%\", 100 - \$8)}\\\'')#const cpuUsageCommand = access('/sbin/cpuusage') ? '/sbin/cpuusage' : 'top -n1 | awk \\\'/^CPU/ {printf(\"%d%\", 100 - \$8)}\\\''#g" $luci_dir
         sed -i '/cpuUsageCommand/a \\t\t\tconst fd = popen(cpuUsageCommand);' $luci_dir
     fi
 
@@ -317,6 +339,9 @@ chanage_cpuusage() {
     if [ -f "$imm_script2" ]; then
         \rm -f "$imm_script2"
     fi
+
+    # 临时放一下，清理脚本
+    find $BUILD_DIR/package/base-files/files/etc/uci-defaults/ -type f -name "9*.sh" -exec rm -f {} +
 }
 
 update_tcping() {
@@ -347,7 +372,7 @@ boot() {
     local wg_ifname=$(wg show | awk '/interface/ {print $2}')
 
     if [ -n "$wg_ifname" ]; then
-        # 添加新的 wireguard_check 任务，每3分钟执行一次
+        # 添加新的 wireguard_check 任务，每10分钟执行一次
         echo "*/10 * * * * /sbin/wireguard_check.sh" >>/etc/crontabs/root
         uci set system.@system[0].cronloglevel='9'
         uci commit system
@@ -384,6 +409,35 @@ update_pw_ha_chk() {
     fi
 }
 
+install_opkg_distfeeds() {
+    # 只处理aarch64
+    if ! grep -q "nss-packages" "$BUILD_DIR/feeds.conf.default"; then
+        return
+    fi
+    local emortal_def_dir="$BUILD_DIR/package/emortal/default-settings"
+    local distfeeds_conf="$emortal_def_dir/files/99-distfeeds.conf"
+
+    if [ -d "$emortal_def_dir" ] && [ ! -f "$distfeeds_conf" ]; then
+        install -m 755 -D "$BASE_PATH/patches/99-distfeeds.conf" "$distfeeds_conf"
+
+        sed -i "/define Package\/default-settings\/install/a\\
+\\t\$(INSTALL_DIR) \$(1)/etc\\n\
+\t\$(INSTALL_DATA) ./files/99-distfeeds.conf \$(1)/etc/99-distfeeds.conf\n" $emortal_def_dir/Makefile
+
+        sed -i "/exit 0/i\\
+[ -f \'/etc/99-distfeeds.conf\' ] && mv \'/etc/99-distfeeds.conf\' \'/etc/opkg/distfeeds.conf\'\n\
+sed -ri \'/check_signature/s@^[^#]@#&@\' /etc/opkg.conf\n" $emortal_def_dir/files/99-default-settings
+    fi
+}
+
+update_nss_pbuf_performance() {
+    local pbuf_path="$BUILD_DIR/package/kernel/mac80211/files/pbuf.uci"
+    if [ -d "$(dirname "$pbuf_path")" ] && [ -f $pbuf_path ]; then
+        sed -i "s/auto_scale '1'/auto_scale 'off'/g" $pbuf_path
+        sed -i "s/scaling_governor 'schedutil'/scaling_governor 'performance'/g" $pbuf_path
+    fi
+}
+
 main() {
     clone_repo
     clean_up
@@ -409,6 +463,8 @@ main() {
     add_ax6600_led
     set_custom_task
     update_pw_ha_chk
+    install_opkg_distfeeds
+    update_nss_pbuf_performance
     install_feeds
 }
 
