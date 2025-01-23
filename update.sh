@@ -83,7 +83,7 @@ remove_unwanted_packages() {
         "luci-app-passwall" "luci-app-smartdns" "luci-app-ddns-go" "luci-app-rclone"
         "luci-app-ssr-plus" "luci-app-vssr" "luci-theme-argon" "luci-app-daed" "luci-app-dae"
         "luci-app-alist" "luci-app-argon-config" "luci-app-homeproxy" "luci-app-haproxy-tcp"
-        "luci-app-openclash" "luci-app-mihomo" "luci-app-passwall2"
+        "luci-app-openclash" "luci-app-mihomo"
     )
     local packages_net=(
         "haproxy" "xray-core" "xray-plugin" "dns2socks" "alist" "hysteria"
@@ -254,6 +254,7 @@ remove_something_nss_kmod() {
 
 remove_affinity_script() {
     local affinity_script_dir="$BUILD_DIR/target/linux/qualcommax"
+
     if [ -d "$affinity_script_dir" ]; then
         find "$affinity_script_dir" -name "set-irq-affinity" -exec rm -f {} \;
     fi
@@ -504,7 +505,7 @@ main() {
     remove_affinity_script
     fix_build_for_openssl
     update_ath11k_fw
-    fix_mkpkg_format_invalid
+    # fix_mkpkg_format_invalid
     chanage_cpuusage
     update_tcping
     add_wg_chk
