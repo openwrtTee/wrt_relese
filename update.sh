@@ -575,6 +575,8 @@ serve-expired-reply-ttl 5
 max-reply-ip-num 3
 dualstack-ip-selection-threshold 15
 server 223.5.5.5 -bootstrap-dns
+server 119.29.29.29 -bootstrap-dns
+server 180.184.1.1 -bootstrap-dns
 EOF
     fi
 }
