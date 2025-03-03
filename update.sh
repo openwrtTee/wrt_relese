@@ -467,6 +467,11 @@ update_menu_location() {
     if [ -d "$(dirname "$samba4_path")" ] && [ -f "$samba4_path" ]; then
         sed -i 's/nas/services/g' "$samba4_path"
     fi
+
+    local tailscale_path="$BUILD_DIR/feeds/small8/luci-app-tailscale/root/usr/share/luci/menu.d/luci-app-tailscale.json"
+    if [ -d "$(dirname "$tailscale_path")" ] && [ -f "$tailscale_path" ]; then
+        sed -i 's/services/vpn/g' "$tailscale_path"
+    fi
 }
 
 fix_compile_coremark() {
@@ -580,6 +585,13 @@ EOF
     fi
 }
 
+update_mosdns_deconfig() {
+    local mosdns_conf="$BUILD_DIR/feeds/small8/luci-app-mosdns/root/etc/config/mosdns"
+    if [ -d "${mosdns_conf%/*}" ] && [ -f "$mosdns_conf" ]; then
+        sed -i 's/8000/300/g' "$mosdns_conf"
+    fi
+}
+
 main() {
     clone_repo
     clean_up
@@ -617,6 +629,7 @@ main() {
     # update_lucky
     add_backup_info_to_sysupgrade
     optimize_smartDNS
+    update_mosdns_deconfig
     install_feeds
     update_package "small8/sing-box"
     update_script_priority
