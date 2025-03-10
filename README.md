@@ -54,6 +54,7 @@ cd wrt_release
 ./build.sh x64_immwrt
 
 编译兆能M2:
+
 ./build.sh zn_m2_immwrt
 
 ./build.sh zn_m2_libwrt
